@@ -1,1 +1,827 @@
-hello world
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Investment Portfolio Tracker</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" xintegrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    
+    <!-- Font Awesome (for icons) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" xintegrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+    <style>
+        /* --- Custom Styles --- */
+        
+        body {
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        /* Main content area - now full width */
+        .main-content {
+            padding: 2rem;
+            /* Removed margin-left */
+        }
+        
+        /* Responsive padding for mobile */
+        @media (max-width: 767.98px) {
+            .main-content {
+                padding: 1rem;
+            }
+        }
+        
+        /* Removed all sidebar and toggle styles */
+
+        /* --- Dark Mode Styles --- */
+        body.dark-mode {
+            background-color: #121212;
+            color: #e0e0e0;
+        }
+
+        body.dark-mode .card,
+        body.dark-mode .form-control,
+        body.dark-mode .form-select,
+        body.dark-mode .list-group-item,
+        body.dark-mode .modal-content,
+        body.dark-mode .accordion-item,
+        body.dark-mode .accordion-button,
+        body.dark-mode .form-control:disabled {
+            background-color: #2a2a2a;
+            color: #e0e0e0;
+            border-color: #444;
+        }
+        
+        body.dark-mode datalist {
+            background-color: #2a2a2a;
+        }
+
+        body.dark-mode .accordion-button:not(.collapsed) {
+            background-color: #333;
+            color: #fff;
+        }
+
+        body.dark-mode .form-control::placeholder {
+            color: #888;
+        }
+        
+        body.dark-mode .form-control:focus,
+        body.dark-mode .form-select:focus {
+            background-color: #333;
+            color: #e0e0e0;
+            border-color: #555;
+            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+        }
+
+        body.dark-mode .table {
+            color: #e0e0e0;
+        }
+        
+        body.dark-mode .btn-close {
+            filter: invert(1) grayscale(100%) brightness(200%);
+        }
+
+        body.dark-mode .table-hover > tbody > tr:hover > * {
+            color: #e0e0e0;
+            background-color: #333;
+        }
+
+        /* --- Dashboard Styles --- */
+        .pl-gain {
+            color: var(--bs-success) !important;
+            font-weight: bold;
+        }
+
+        .pl-loss {
+            color: var(--bs-danger) !important;
+            font-weight: bold;
+        }
+
+        .pl-neutral {
+            color: var(--bs-secondary) !imporant;
+        }
+
+        .summary-row .col {
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+        
+        .summary-row .asset-name {
+            font-size: 1.1rem;
+            font-weight: bold;
+        }
+        
+        .accordion-button:focus {
+            box-shadow: none;
+        }
+
+        .accordion-body {
+            padding: 0;
+        }
+        
+        .detail-table th {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            color: #888;
+        }
+        
+        body.dark-mode .detail-table th {
+            color: #aaa;
+        }
+        
+        .summary-row span[id],
+        .detail-table span[id] {
+            transition: color 0.3s ease;
+        }
+        
+        .btn-remove-asset {
+            padding: 0.1rem 0.4rem;
+            font-size: 0.8rem;
+        }
+        
+        .summary-actions-col {
+            text-align: right;
+        }
+        
+        /* Wrapper for the dark mode toggle in the header */
+        .header-controls {
+            display: flex;
+            align-items: center;
+        }
+
+    </style>
+</head>
+<body>
+    <!-- No Sidebar -->
+
+    <!-- Main Content -->
+    <main class="main-content" id="main-content">
+
+        <!-- ===== Dashboard Page ===== -->
+        <!-- This is now the only page -->
+        <div id="dashboard-page">
+            
+            <!-- Header Row with Dark Mode Toggle -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="mb-0">Dashboard</h1>
+                <div class="header-controls">
+                    <div class="form-check form-switch fs-5">
+                        <input class="form-check-input" type="checkbox" role="switch" id="dark-mode-toggle">
+                        <label class="form-check-label" for="dark-mode-toggle">Dark Mode</label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Add Asset Toggler and Collapsible Card -->
+            <div class="mb-4">
+                <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#add-asset-collapse" aria-expanded="false" aria-controls="add-asset-collapse">
+                    <i class="fas fa-plus"></i> Add New Asset
+                </button>
+            </div>
+
+            <div class="collapse" id="add-asset-collapse">
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Add New Asset</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="add-asset-form">
+                            <!-- Step 1: Category -->
+                            <div class="mb-3">
+                                <label for="asset-category" class="form-label">Asset Category</label>
+                                <select class="form-select" id="asset-category" required>
+                                    <option value="" selected disabled>Choose category...</option>
+                                    <option value="stock">Stock</option>
+                                    <option value="crypto">Cryptocurrency</option>
+                                    <option value="commodity">Commodity</option>
+                                </select>
+                            </div>
+
+                            <!-- Step 2: Stock Options -->
+                            <div id="stock-options" class="mb-3" style="display: none;">
+                                <div class="mb-3">
+                                    <label for="asset-country" class="form-label">Country</label>
+                                    <select class="form-select" id="asset-country">
+                                        <option value="" selected disabled>Choose country...</option>
+                                        <option value="USA">USA</option>
+                                        <option value="POL">Poland</option>
+                                        <option value="GER">Germany</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="asset-stock-search" class="form-label">Company (Search by Name or Symbol)</label>
+                                    <input class="form-control" list="stock-datalist" id="asset-stock-search" placeholder="Type to search...">
+                                    <datalist id="stock-datalist">
+                                        <!-- Options populated by JS -->
+                                    </datalist>
+                                </div>
+                            </div>
+
+                            <!-- Step 2: Crypto Options -->
+                            <div id="crypto-options" class="mb-3" style="display: none;">
+                                <label for="asset-crypto-search" class="form-label">Cryptocurrency (Search by Name or Symbol)</label>
+                                <input class="form-control" list="crypto-datalist" id="asset-crypto-search" placeholder="Type to search...">
+                                <datalist id="crypto-datalist">
+                                    <!-- Options populated by JS -->
+                                </datalist>
+                            </div>
+                            
+                            <!-- Step 2: Commodity Options -->
+                            <div id="commodity-options" class="mb-3" style="display: none;">
+                                <label for="asset-commodity-search" class="form-label">Commodity</label>
+                                <input class="form-control" list="commodity-datalist" id="asset-commodity-search" placeholder="Type to search...">
+                                <datalist id="commodity-datalist">
+                                    <!-- Options populated by JS -->
+                                </datalist>
+                            </div>
+
+                            <!-- Step 3: Purchase Details -->
+                            <div id="purchase-details" class="row" style="display: none;">
+                                <hr class="my-3">
+                                <h6 class="mb-3">Purchase Details</h6>
+                                <div class="col-md-4 mb-3">
+                                    <label for="asset-date" class="form-label">Purchase Date</label>
+                                    <input type="date" class="form-control" id="asset-date" required>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label for="asset-quantity" class="form-label">Quantity</label>
+                                    <input type="number" step="0.000001" min="0" class="form-control" id="asset-quantity" placeholder="e.g., 10.5" required>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label for="asset-price" class="form-label">Price per Unit</label>
+                                    <input type="number" step="0.01" min="0" class="form-control" id="asset-price" placeholder="e.g., 150.25" required>
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary" id="add-asset-btn" disabled>
+                                <i class="fas fa-save"></i> Save Purchase
+                            </button>
+                            <button type="button" class="btn btn-secondary ms-2" id="reset-asset-form">
+                                Clear Form
+                            </button>
+                        </form>
+                        
+                        <div id="form-success-alert" class="alert alert-success mt-3" style="display: none;" role="alert">
+                            <!-- Content set by JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Portfolio Card -->
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h5 class="mb-0">My Portfolio</h5>
+                </div>
+                <div class="card-body">
+                    <div id="portfolio-loading" class="text-center">
+                        <div class="spinner-border" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2">Loading portfolio data...</p>
+                    </div>
+                    <div id="portfolio-content" class="accordion">
+                        <!-- Portfolio items injected by JS -->
+                    </div>
+                    <div id="portfolio-empty" class="text-center text-muted" style="display: none;">
+                        <p class="fs-5">Your portfolio is empty.</p>
+                        <p>Use the "Add New Asset" form above to get started.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- No Settings Page -->
+
+    </main>
+    
+    <!-- Confirmation Modal (for removal) -->
+    <div class="modal fade" id="confirm-remove-modal" tabindex="-1" aria-labelledby="confirmRemoveModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmRemoveModalLabel">Confirm Deletion</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="confirm-remove-modal-body">
+                    <!-- Content set by JS -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger" id="btn-confirm-remove">Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Bootstrap JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" xintegrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+
+            // --- STATE MANAGEMENT ---
+            const STORAGE_KEY = 'investmentPortfolioSettings';
+            let state = {
+                darkMode: true, // Default to dark mode
+                portfolio: []
+            };
+
+            // --- MOCK DATA ---
+            const mockCompanyData = {
+                "USA": [
+                    { symbol: "AAPL", name: "Apple Inc." }, { symbol: "MSFT", name: "Microsoft Corp." }, { symbol: "GOOGL", name: "Alphabet Inc. (Google)" }, { symbol: "AMZN", name: "Amazon.com, Inc." }, { symbol: "NVDA", name: "NVIDIA Corp." }, { symbol: "TSLA", name: "Tesla, Inc." }, { symbol: "META", name: "Meta Platforms, Inc." }, { symbol: "JPM", name: "JPMorgan Chase & Co." }, { symbol: "V", name: "Visa Inc." }, { symbol: "WMT", name: "Walmart Inc." }
+                ],
+                "POL": [
+                    { symbol: "PKO", name: "PKO Bank Polski" }, { symbol: "CDR", name: "CD Projekt" }, { symbol: "KGH", name: "KGHM Polska Miedź" }, { symbol: "PZU", name: "PZU SA" }, { symbol: "PKN", name: "Polski Koncern Naftowy ORLEN" }, { symbol: "DNP", name: "Dino Polska S.A." }, { symbol: "PEO", name: "Bank Pekao" }, { symbol: "LPP", name: "LPP S.A." }, { symbol: "ALE", name: "Allegro.eu" }
+                ],
+                "GER": [
+                    { symbol: "SAP", name: "SAP SE" }, { symbol: "VOW3", name: "Volkswagen AG" }, { symbol: "SIE", name: "Siemens AG" }, { symbol: "MBG", name: "Mercedes-Benz Group" }, { symbol: "ALV", name: "Allianz SE" }, { symbol: "DBK", name: "Deutsche Bank AG" }, { symbol: "BAYN", name: "Bayer AG" }, { symbol: "ADS", name: "Adidas AG" }
+                ]
+            };
+            const mockCryptoData = [
+                { symbol: "BTC", name: "Bitcoin" }, { symbol: "ETH", name: "Ethereum" }, { symbol: "SOL", name: "Solana" }, { symbol: "USDT", name: "Tether" }, { symbol: "BNB", name: "BNB" }, { symbol: "XRP", name: "XRP" }, { symbol: "DOGE", name: "Dogecoin" }, { symbol: "ADA", name: "Cardano" }, { symbol: "AVAX", name: "Avalanche" }, { symbol: "DOT", name: "Polkadot" }
+            ];
+            const mockCommodityData = [
+                { symbol: "XAU", name: "Gold" }, { symbol: "XAG", name: "Silver" }, { symbol: "WTI", name: "Crude Oil (WTI)" }, { symbol: "BRENT", name: "Crude Oil (Brent)" }, { symbol: "NG", name: "Natural Gas" }, { symbol: "CORN", name: "Corn" }, { symbol: "SOY", name: "Soybeans" }, { symbol: "COPPER", name: "Copper" }
+            ];
+            
+            let mockCurrentPrices = {};
+            let priceUpdateInterval;
+            
+            // --- DATA SOURCE NOTE (API) ---
+            // As requested, this uses simulated data. Real-world implementation
+            // would require a server-side component to securely call a financial API
+            // (like Finnhub, Alpha Vantage, or CoinGecko) to get real-time currency
+            // and stock data, as API keys cannot be safely exposed in client-side JS.
+            
+            async function fetchPriceData(assetSymbol) {
+                if (!mockCurrentPrices[assetSymbol]) {
+                    if (assetSymbol.includes('BTC')) mockCurrentPrices[assetSymbol] = 60000;
+                    else if (assetSymbol.includes('ETH')) mockCurrentPrices[assetSymbol] = 3000;
+                    else if (assetSymbol.includes('GOLD') || assetSymbol.includes('XAU')) mockCurrentPrices[assetSymbol] = 2300;
+                    else if (assetSymbol.includes('OIL') || assetSymbol.includes('WTI')) mockCurrentPrices[assetSymbol] = 80;
+                    else if (assetSymbol.includes('AAPL')) mockCurrentPrices[assetSymbol] = 200;
+                    else if (assetSymbol.includes('PKO')) mockCurrentPrices[assetSymbol] = 60;
+                    else if (assetSymbol.includes('SAP')) mockCurrentPrices[assetSymbol] = 180;
+                    else mockCurrentPrices[assetSymbol] = 150;
+                }
+
+                const fluctuation = (Math.random() - 0.49) * (mockCurrentPrices[assetSymbol] * 0.01);
+                let newPrice = mockCurrentPrices[assetSymbol] + fluctuation;
+                if (newPrice < 0) newPrice = 0;
+                mockCurrentPrices[assetSymbol] = newPrice;
+                
+                await new Promise(resolve => setTimeout(resolve, Math.random() * 50));
+                return mockCurrentPrices[assetSymbol];
+            }
+
+            // --- DOM SELECTORS ---
+            // Removed sidebar, toggle, navLinks, pages
+            
+            const portfolioContent = document.getElementById('portfolio-content');
+            const portfolioLoading = document.getElementById('portfolio-loading');
+            const portfolioEmpty = document.getElementById('portfolio-empty');
+
+            const darkModeToggle = document.getElementById('dark-mode-toggle');
+            
+            // Form
+            const addAssetForm = document.getElementById('add-asset-form');
+            const assetCategorySelect = document.getElementById('asset-category');
+            const stockOptions = document.getElementById('stock-options');
+            const cryptoOptions = document.getElementById('crypto-options');
+            const commodityOptions = document.getElementById('commodity-options');
+            const assetCountrySelect = document.getElementById('asset-country');
+            const assetStockSearch = document.getElementById('asset-stock-search');
+            const stockDatalist = document.getElementById('stock-datalist');
+            const assetCryptoSearch = document.getElementById('asset-crypto-search');
+            const cryptoDatalist = document.getElementById('crypto-datalist');
+            const assetCommoditySearch = document.getElementById('asset-commodity-search');
+            const commodityDatalist = document.getElementById('commodity-datalist');
+            const purchaseDetails = document.getElementById('purchase-details');
+            const addAssetBtn = document.getElementById('add-asset-btn');
+            const resetAssetFormBtn = document.getElementById('reset-asset-form');
+            const formSuccessAlert = document.getElementById('form-success-alert');
+            
+            // Removal Modal
+            const confirmRemoveModal = document.getElementById('confirm-remove-modal');
+            const confirmRemoveModalBody = document.getElementById('confirm-remove-modal-body');
+            const btnConfirmRemove = document.getElementById('btn-confirm-remove');
+            const bsConfirmModal = new bootstrap.Modal(confirmRemoveModal);
+
+            // --- HELPER FUNCTIONS ---
+            
+            function saveState() {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+            }
+
+            function loadState() {
+                const savedState = localStorage.getItem(STORAGE_KEY);
+                if (savedState) {
+                    state = { ...state, ...JSON.parse(savedState) };
+                }
+            }
+
+            function applySettings() {
+                document.body.classList.toggle('dark-mode', state.darkMode);
+                darkModeToggle.checked = state.darkMode;
+            }
+
+            function formatCurrency(num) {
+                return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num);
+            }
+
+            function formatPercent(num) {
+                return new Intl.NumberFormat('en-US', { style: 'percent', minimumFractionDigits: 2, signDisplay: 'always' }).format(num);
+            }
+
+            function generateId() {
+                return `id_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+            }
+
+            // --- PAGE NAVIGATION (Removed) ---
+            
+            // --- DASHBOARD LOGIC ---
+            
+            function startPriceUpdates() {
+                stopPriceUpdates();
+                if (state.portfolio.length > 0) {
+                    updateDashboardPrices();
+                    priceUpdateInterval = setInterval(updateDashboardPrices, 5000);
+                }
+            }
+            
+            function stopPriceUpdates() {
+                if (priceUpdateInterval) {
+                    clearInterval(priceUpdateInterval);
+                    priceUpdateInterval = null;
+                }
+            }
+
+            async function updateDashboardPrices() {
+                if (state.portfolio.length === 0) return;
+
+                const pricePromises = state.portfolio.map(asset => fetchPriceData(asset.symbol));
+                await Promise.all(pricePromises);
+
+                for (const asset of state.portfolio) {
+                    const currentPrice = mockCurrentPrices[asset.symbol] || 0;
+                    
+                    let totalQuantity = 0;
+                    let totalCost = 0;
+                    
+                    asset.purchases.forEach((p, index) => {
+                        const purchaseCost = p.quantity * p.price;
+                        const purchaseCurrentValue = p.quantity * currentPrice;
+                        const purchasePL = purchaseCurrentValue - purchaseCost;
+                        const purchasePLPercent = (purchaseCost === 0) ? 0 : (purchasePL / purchaseCost);
+                        let purchasePLClass = purchasePLPercent > 0.0001 ? 'pl-gain' : (purchasePLPercent < -0.0001 ? 'pl-loss' : 'pl-neutral');
+
+                        const valEl = document.getElementById(`purchase-${asset.id}-${index}-value`);
+                        const plEl = document.getElementById(`purchase-${asset.id}-${index}-pl`);
+                        
+                        if (valEl) valEl.textContent = formatCurrency(purchaseCurrentValue);
+                        if (plEl) {
+                            plEl.textContent = formatPercent(purchasePLPercent);
+                            plEl.className = purchasePLClass;
+                        }
+
+                        totalQuantity += p.quantity;
+                        totalCost += purchaseCost;
+                    });
+                    
+                    const currentValue = totalQuantity * currentPrice;
+                    const profitLoss = currentValue - totalCost;
+                    const profitLossPercent = (totalCost === 0) ? 0 : (profitLoss / totalCost);
+
+                    let plClass = profitLossPercent > 0.0001 ? 'pl-gain' : (profitLossPercent < -0.0001 ? 'pl-loss' : 'pl-neutral');
+                    let plIcon = profitLossPercent > 0.0001 ? 'fa-arrow-up' : (profitLossPercent < -0.0001 ? 'fa-arrow-down' : 'fa-minus');
+
+                    const summaryValEl = document.getElementById(`summary-${asset.id}-value`);
+                    const summaryPlPctEl = document.getElementById(`summary-${asset.id}-pl-percent`);
+                    const summaryPlValEl = document.getElementById(`summary-${asset.id}-pl-value`);
+                    const summaryPlIconEl = document.getElementById(`summary-${asset.id}-pl-icon`);
+                    const summaryPlContainer = document.getElementById(`summary-${asset.id}-pl-container`);
+
+                    if (summaryValEl) summaryValEl.textContent = formatCurrency(currentValue);
+                    if (summaryPlPctEl) summaryPlPctEl.textContent = formatPercent(profitLossPercent);
+                    if (summaryPlValEl) summaryPlValEl.textContent = formatCurrency(profitLoss);
+                    if (summaryPlIconEl) summaryPlIconEl.className = `fas ${plIcon} ms-1`;
+                    if (summaryPlContainer) summaryPlContainer.className = `col-md-2 col-3 ${plClass}`;
+                }
+            }
+
+            async function renderDashboardStructure() {
+                if (state.portfolio.length === 0) {
+                    portfolioLoading.style.display = 'none';
+                    portfolioContent.style.display = 'none';
+                    portfolioEmpty.style.display = 'block';
+                    stopPriceUpdates();
+                    return;
+                }
+                
+                portfolioLoading.style.display = 'block';
+                portfolioContent.style.display = 'none';
+                portfolioEmpty.style.display = 'none';
+                
+                const pricePromises = state.portfolio.map(asset => fetchPriceData(asset.symbol));
+                await Promise.all(pricePromises);
+                
+                let html = '';
+                
+                for (const asset of state.portfolio) {
+                    const currentPrice = mockCurrentPrices[asset.symbol] || 0;
+                    
+                    let totalQuantity = 0;
+                    let totalCost = 0;
+                    
+                    let detailTable = `
+                        <table class="table table-sm table-hover mb-0 detail-table">
+                            <thead>
+                                <tr>
+                                    <th>Purchase Date</th>
+                                    <th>Qty</th>
+                                    <th>Purchase Price</th>
+                                    <th>Total Cost</th>
+                                    <th>Current Value</th>
+                                    <th>P/L %</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                    `;
+                    
+                    asset.purchases.forEach((p, index) => {
+                        const purchaseCost = p.quantity * p.price;
+                        const purchaseCurrentValue = p.quantity * currentPrice;
+                        const purchasePL = purchaseCurrentValue - purchaseCost;
+                        const purchasePLPercent = (purchaseCost === 0) ? 0 : (purchasePL / purchaseCost);
+                        let purchasePLClass = purchasePLPercent > 0.0001 ? 'pl-gain' : (purchasePLPercent < -0.0001 ? 'pl-loss' : 'pl-neutral');
+                        
+                        detailTable += `
+                            <tr>
+                                <td>${p.date}</td>
+                                <td>${p.quantity.toLocaleString()}</td>
+                                <td>${formatCurrency(p.price)}</td>
+                                <td>${formatCurrency(purchaseCost)}</td>
+                                <td><span id="purchase-${asset.id}-${index}-value">${formatCurrency(purchaseCurrentValue)}</span></td>
+                                <td class="${purchasePLClass}"><span id="purchase-${asset.id}-${index}-pl">${formatPercent(purchasePLPercent)}</span></td>
+                            </tr>
+                        `;
+                        
+                        totalQuantity += p.quantity;
+                        totalCost += purchaseCost;
+                    });
+                    
+                    detailTable += `</tbody></table>`;
+
+                    const currentValue = totalQuantity * currentPrice;
+                    const profitLoss = currentValue - totalCost;
+                    const profitLossPercent = (totalCost === 0) ? 0 : (profitLoss / totalCost);
+
+                    let plClass = profitLossPercent > 0.0001 ? 'pl-gain' : (profitLossPercent < -0.0001 ? 'pl-loss' : 'pl-neutral');
+                    let plIcon = profitLossPercent > 0.0001 ? 'fa-arrow-up' : (profitLossPercent < -0.0001 ? 'fa-arrow-down' : 'fa-minus');
+
+                    html += `
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="heading-${asset.id}">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-${asset.id}" aria-expanded="false" aria-controls="collapse-${asset.id}">
+                                    <div class="container-fluid summary-row">
+                                        <div class="row align-items-center">
+                                            <div class="col-md-3 col-5 asset-name">
+                                                ${asset.name} (${asset.symbol})
+                                                <small class="d-block text-muted fw-normal">${asset.type}</small>
+                                            </div>
+                                            <div class="col-md-2 d-none d-md-block">
+                                                ${totalQuantity.toLocaleString()} Units
+                                                <small class="d-block text-muted fw-normal">Total Qty</small>
+                                            </div>
+                                            <div class="col-md-2 col-3">
+                                                <span id="summary-${asset.id}-value">${formatCurrency(currentValue)}</span>
+                                                <small class="d-block text-muted fw-normal">Current Value</small>
+                                            </div>
+                                            <div class="col-md-2 d-none d-md-block">
+                                                ${formatCurrency(totalCost)}
+                                                <small class="d-block text-muted fw-normal">Total Cost</small>
+                                            </div>
+                                            <div class="col-md-2 col-3 ${plClass}" id="summary-${asset.id}-pl-container">
+                                                <span id="summary-${asset.id}-pl-percent">${formatPercent(profitLossPercent)}</span>
+                                                <i class="fas ${plIcon} ms-1" id="summary-${asset.id}-pl-icon"></i>
+                                                <small class="d-block fw-normal" id="summary-${asset.id}-pl-value">${formatCurrency(profitLoss)}</small>
+                                            </div>
+                                            <div class="col-md-1 col-1 summary-actions-col">
+                                                <button class="btn btn-sm btn-outline-danger btn-remove-asset" data-asset-id="${asset.id}" data-asset-name="${asset.name}">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </button>
+                            </h2>
+                            <div id="collapse-${asset.id}" class="accordion-collapse collapse" aria-labelledby="heading-${asset.id}">
+                                <div class="accordion-body">
+                                    ${detailTable}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                portfolioContent.innerHTML = html;
+                portfolioLoading.style.display = 'none';
+                portfolioContent.style.display = 'block';
+                portfolioEmpty.style.display = 'none';
+                
+                // Re-attach listeners after render
+                attachRemoveListeners();
+                
+                startPriceUpdates();
+            }
+
+
+            // --- SETTINGS & FORM LOGIC ---
+            
+            function onDarkModeToggle() {
+                state.darkMode = darkModeToggle.checked;
+                applySettings();
+                saveState();
+            }
+            
+            function populateStaticDatalists() {
+                cryptoDatalist.innerHTML = '';
+                mockCryptoData.forEach(crypto => {
+                    cryptoDatalist.appendChild(new Option(`${crypto.name} (${crypto.symbol})`));
+                });
+                
+                commodityDatalist.innerHTML = '';
+                mockCommodityData.forEach(commodity => {
+                    commodityDatalist.appendChild(new Option(`${commodity.name} (${commodity.symbol})`));
+                });
+            }
+
+            function updateSettingsForm() {
+                const category = assetCategorySelect.value;
+                
+                stockOptions.style.display = 'none';
+                cryptoOptions.style.display = 'none';
+                commodityOptions.style.display = 'none';
+                purchaseDetails.style.display = 'none';
+                addAssetBtn.disabled = true;
+
+                assetCountrySelect.value = '';
+                assetStockSearch.value = '';
+                assetCryptoSearch.value = '';
+                assetCommoditySearch.value = '';
+                stockDatalist.innerHTML = '<option value="" selected disabled>First select country...</option>';
+
+                if (category === 'stock') stockOptions.style.display = 'block';
+                else if (category === 'crypto') {
+                    cryptoOptions.style.display = 'block';
+                    purchaseDetails.style.display = 'flex';
+                    addAssetBtn.disabled = false;
+                } else if (category === 'commodity') {
+                    commodityOptions.style.display = 'block';
+                    purchaseDetails.style.display = 'flex';
+                    addAssetBtn.disabled = false;
+                }
+            }
+
+            function populateStockDatalist() {
+                const country = assetCountrySelect.value;
+                const companies = mockCompanyData[country] || [];
+                
+                stockDatalist.innerHTML = '';
+                companies.forEach(company => {
+                    stockDatalist.appendChild(new Option(`${company.name} (${company.symbol})`));
+                });
+                
+                if (country) {
+                    purchaseDetails.style.display = 'flex';
+                    addAssetBtn.disabled = false;
+                }
+            }
+            
+            function parseAssetInput(inputValue) {
+                const match = inputValue.match(/(.*) \((.*)\)$/);
+                if (match && match[1] && match[2]) {
+                    return { name: match[1].trim(), symbol: match[2].trim() };
+                }
+                return null;
+            }
+
+            function handleAddAsset(e) {
+                e.preventDefault();
+                
+                const category = assetCategorySelect.value;
+                let assetInfo = null;
+                
+                if (category === 'stock') assetInfo = parseAssetInput(assetStockSearch.value);
+                else if (category === 'crypto') assetInfo = parseAssetInput(assetCryptoSearch.value);
+                else if (category === 'commodity') assetInfo = parseAssetInput(assetCommoditySearch.value);
+
+                if (!assetInfo) {
+                    alert('Invalid asset selection. Please choose from the list or type in "Name (SYMBOL)" format.');
+                    return;
+                }
+                
+                const { name, symbol } = assetInfo;
+
+                const purchase = {
+                    date: document.getElementById('asset-date').value,
+                    quantity: parseFloat(document.getElementById('asset-quantity').value),
+                    price: parseFloat(document.getElementById('asset-price').value)
+                };
+
+                if (!purchase.date || isNaN(purchase.quantity) || isNaN(purchase.price) || purchase.quantity <= 0 || purchase.price < 0) {
+                    alert('Please fill in all purchase details with valid numbers.');
+                    return;
+                }
+                
+                let asset = state.portfolio.find(a => a.symbol === symbol);
+                
+                if (asset) {
+                    asset.purchases.push(purchase);
+                } else {
+                    asset = {
+                        id: generateId(), type: category, symbol: symbol, name: name,
+                        purchases: [purchase]
+                    };
+                    state.portfolio.push(asset);
+                }
+
+                saveState();
+                
+                // Reset only purchase fields
+                document.getElementById('asset-date').value = '';
+                document.getElementById('asset-quantity').value = '';
+                document.getElementById('asset-price').value = '';
+
+                formSuccessAlert.textContent = `Purchase for ${name} saved! You can add another purchase for this asset or clear the form.`;
+                formSuccessAlert.style.display = 'block';
+                setTimeout(() => {
+                    formSuccessAlert.style.display = 'none';
+                }, 4000);
+                
+                renderDashboardStructure();
+            }
+            
+            // --- REMOVAL LOGIC ---
+            
+            function attachRemoveListeners() {
+                document.querySelectorAll('.btn-remove-asset').forEach(button => {
+                    button.addEventListener('click', (e) => {
+                        e.stopPropagation(); 
+                        
+                        const assetId = e.currentTarget.dataset.assetId;
+                        const assetName = e.currentTarget.dataset.assetName;
+                        
+                        confirmRemoveModalBody.textContent = `Are you sure you want to remove '${assetName}' and all its purchases from your portfolio?`;
+                        btnConfirmRemove.dataset.assetId = assetId;
+                        
+                        bsConfirmModal.show();
+                    });
+                });
+            }
+            
+            function handleRemoveAsset() {
+                const assetId = btnConfirmRemove.dataset.assetId;
+                if (!assetId) return;
+
+                state.portfolio = state.portfolio.filter(a => a.id !== assetId);
+                saveState();
+                renderDashboardStructure();
+                bsConfirmModal.hide();
+            }
+
+
+            // --- INITIALIZATION ---
+            function init() {
+                loadState();
+                applySettings(); // Apply saved state (or default dark mode)
+                // initNavigation(); // Removed
+                populateStaticDatalists();
+
+                // Form Listeners
+                darkModeToggle.addEventListener('change', onDarkModeToggle);
+                assetCategorySelect.addEventListener('change', updateSettingsForm);
+                assetCountrySelect.addEventListener('change', populateStockDatalist);
+                addAssetForm.addEventListener('submit', handleAddAsset);
+                resetAssetFormBtn.addEventListener('click', () => {
+                    addAssetForm.reset();
+                    updateSettingsForm();
+                });
+                
+                // Removal Listener
+                btnConfirmRemove.addEventListener('click', handleRemoveAsset);
+
+                renderDashboardStructure();
+                // navigate('dashboard'); // Removed, now always on dashboard
+                startPriceUpdates(); // Manually start updates
+            }
+            
+            init();
+
+        });
+    </script>
+
+</body>
+</html>
