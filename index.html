@@ -11,13 +11,16 @@
     <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     
-    <!-- Favicon (Money Bag Emoji) -->
+    <!-- Favicon -->
     <link href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💰</text></svg>" rel="icon">
     
     <!-- Inter Font -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- SortableJS (for Drag and Drop) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js" xintegrity="sha512-TelkP3PCMJv+viJSvGijkE3L/H8aLxtG5LM2o82lILoLC/S2rM/vY/SwLSjT42Mu/lzaKb/i/iR0F/n/Gmyhsg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
     <style>
         /* Custom Styles */
@@ -93,13 +96,58 @@
         }
         @media (min-width: 992px) {
             .asset-summary-grid {
-                grid-template-columns: repeat(4, 1fr); /* Changed from 6 to 4 */
+                grid-template-columns: repeat(4, 1fr);
             }
         }
-
+        
         /* Custom styling for header stats */
-        .accordion-button .fw-bold {
-            white-space: nowrap;
+        .header-stat {
+            line-height: 1.2;
+        }
+        
+        /* Edit Lot Row */
+        .edit-lot-input {
+            width: 90px;
+        }
+        .edit-lot-input-units { /* Wider input for units */
+             width: 120px;
+        }
+        
+        /* Import button styling */
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+        }
+        .file-input-wrapper input[type=file] {
+            font-size: 100px;
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+        }
+        
+        /* Drag and Drop Styles */
+        .asset-drag-handle {
+            cursor: move; /* Use 'move' cursor for grabbing */
+            padding: 0.5rem 0.75rem;
+            margin-right: 0.5rem;
+            color: var(--bs-secondary-color);
+        }
+        .lot-drag-handle {
+            cursor: move;
+            padding: 0 0.5rem;
+            color: var(--bs-secondary-color);
+            text-align: center;
+        }
+        
+        /* Style for item being dragged */
+        .sortable-ghost {
+            opacity: 0.4;
+            background: var(--bs-secondary-bg);
+        }
+        .sortable-chosen {
+            background: var(--bs-secondary-bg);
         }
         
     </style>
@@ -113,6 +161,18 @@
                 <a href="/" class="d-flex align-items-center mb-2 mb-lg-0 text-decoration-none h4 mb-0 me-lg-auto">
                     💰 <span class="ms-2" data-lang-key="title">Portfolio Tracker</span>
                 </a>
+
+                <!-- Main Currency Selector -->
+                <div class="ms-3">
+                    <div class="input-group input-group-sm">
+                        <label class="input-group-text" for="main-currency-select" data-lang-key="main_currency">Main Currency</label>
+                        <select class="form-select" id="main-currency-select">
+                            <option value="PLN" selected>PLN</option>
+                            <option value="USD">USD</option>
+                            <option value="EUR">EUR</option>
+                        </select>
+                    </div>
+                </div>
 
                 <div class="ms-3">
                     <button class="btn btn-outline-secondary" id="lang-toggle-btn">PL</button>
@@ -128,10 +188,26 @@
     <main class="container mt-4">
         
         <!-- Portfolio Header -->
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <div class="d-flex align-items-center">
+        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap">
+            <div class="d-flex align-items-center mb-2 mb-md-0">
                 <h2 data-lang-key="my_portfolio" class="mb-0">My Portfolio</h2>
-                <button class="btn btn-outline-primary btn-sm ms-3" id="refresh-prices-btn">
+                
+                <!-- Auto-Refresh Controls -->
+                <div class="input-group input-group-sm ms-3" style="width: auto;">
+                    <label class="input-group-text" for="auto-refresh-select" data-lang-key="auto_refresh">Auto-Refresh</label>
+                    <select class="form-select" id="auto-refresh-select">
+                        <option value="5s">5 sec</option>
+                        <option value="10s" selected>10 sec</option>
+                        <option value="30s">30 sec</option>
+                        <option value="60s">1 min</option>
+                        <option value="300s">5 min</option>
+                        <option value="600s">10 min</option>
+                        <option value="900s">15 min</option>
+                        <option value="manual" data-lang-key="manual_refresh">Manual</option>
+                    </select>
+                </div>
+                
+                <button class="btn btn-outline-primary btn-sm ms-2" id="refresh-prices-btn">
                     <i class="bi bi-arrow-clockwise"></i> <span data-lang-key="refresh_prices">Refresh Prices</span>
                 </button>
             </div>
@@ -160,13 +236,19 @@
                 </div>
                 <div class="col-md-2 col-6">
                     <label for="new-units" class="form-label small" data-lang-key="units">Units</label>
-                    <input type="number" class="form-control" id="new-units" placeholder="0.00">
+                    <input type="number" class="form-control" id="new-units" placeholder="0.00000" step="0.00001">
                 </div>
                 <div class="col-md-2 col-6">
                     <label for="new-cost" class="form-label small" data-lang-key="cost_per_unit">Cost / Unit</label>
                     <input type="number" class="form-control" id="new-cost" placeholder="0.00">
                 </div>
-                <div class="col-md-2 col-12 d-flex mt-3 mt-md-0">
+                <div class="col-md-2 col-12"> <!-- Adjusted grid -->
+                    <label for="new-commission" class="form-label small" data-lang-key="commission">Commission</label>
+                    <input type="number" class="form-control" id="new-commission" placeholder="0.00">
+                </div>
+            </div>
+            <div class="row mt-3"> <!-- Buttons on new row -->
+                <div class="col-12 d-flex">
                     <button class="btn btn-success w-50 me-1" id="save-new-asset-btn">
                         <i class="bi bi-check-lg"></i> <span data-lang-key="save">Save</span>
                     </button>
@@ -177,22 +259,26 @@
             </div>
             <!-- Autocomplete info box -->
             <div class="form-text mt-2" data-lang-key="autocomplete_info">
-                Start typing a symbol to search. Requires a CORS browser extension.
+                Start typing a symbol to search.
             </div>
         </div>
         
         <!-- Add Lot Form (Template, hidden) -->
         <template id="add-lot-form-template">
              <div class="row g-2 align-items-end p-3 bg-body-tertiary rounded-bottom" data-form-type="add-lot">
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <label class="form-label small" data-lang-key="units">Units</label>
-                    <input type="number" class="form-control" placeholder="0.00" data-input="units">
+                    <input type="number" class="form-control" placeholder="0.00000" step="0.00001" data-input="units">
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <label class="form-label small" data-lang-key="cost_per_unit">Cost / Unit</label>
                     <input type="number" class="form-control" placeholder="0.00" data-input="cost">
                 </div>
-                <div class="col-md-4 d-flex mt-3 mt-md-0">
+                <div class="col-md-3">
+                    <label class="form-label small" data-lang-key="commission">Commission</label>
+                    <input type="number" class="form-control" placeholder="0.00" data-input="commission">
+                </div>
+                <div class="col-md-3 d-flex mt-3 mt-md-0">
                     <button class="btn btn-success w-50 me-1" data-action="save-lot">
                         <i class="bi bi-check-lg"></i> <span data-lang-key="save">Save</span>
                     </button>
@@ -202,46 +288,26 @@
                 </div>
             </div>
         </template>
-
-        <!-- Portfolio List / Accordion -->
-        <div class="accordion" id="portfolio-list">
-            <!-- 
-            Example Structure (Updated):
-            <div class="accordion-item">
-                <h2 class="accordion-header">
-                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-SYMBOL">
-                        <div class="d-flex flex-wrap w-100 align-items-center">
-                            
-                            <div class="me-auto">
-                                <strong class="fs-5 me-2">AAPL</strong>
-                                <span class="text-muted">Apple Inc.</span>
-                            </div>
-                            
-                            <div class="d-flex align-items-center">
-                                <div class="d-none d-md-flex align-items-center me-3">
-                                    <div class="me-3 text-end">
-                                        <span class="small text-muted">Total Units</span>
-                                        <div class="fw-bold">10.00</div>
-                                    </div>
-                                    <div class="text-end">
-                                        <span class="small text-muted">Total Value</span>
-                                        <div class="fw-bold">$1,500.00</div>
-                                    </div>
-                                </div>
-                                <div class="btn-group d-none d-lg-flex">
-                                     ... buttons ...
-                                </div>
-                            </div>
-                        </div>
-                    </button>
-                </h2>
-                <div id="collapse-SYMBOL" class="accordion-collapse collapse">
-                    <div class="accordion-body">
-                        ... Asset details and lots table ...
+        
+        <!-- Total Portfolio Summary -->
+        <div class="card bg-body-secondary mb-3" id="total-portfolio-summary">
+            <div class="card-body p-3">
+                <div class="row g-3">
+                    <div class="col-md-6 col-12">
+                        <span class="small text-muted" data-lang-key="total_portfolio_value">Total Portfolio Value</span>
+                        <div class="fs-4 fw-bold" id="total-value-display">...</div>
+                    </div>
+                    <div class="col-md-6 col-12">
+                        <span class="small text-muted" data-lang-key="total_portfolio_pl">Total Portfolio P/L</span>
+                        <div class="fs-4 fw-bold" id="total-pl-display">...</div>
                     </div>
                 </div>
-            </div> 
-            -->
+            </div>
+        </div>
+        
+        <!-- Portfolio List / Accordion -->
+        <div class="accordion" id="portfolio-list">
+            <!-- Assets will be dynamically inserted here by JS -->
         </div>
 
     </main>
@@ -249,15 +315,30 @@
     <!-- Footer -->
     <footer class="footer mt-auto py-3 bg-body-secondary border-top">
         <div class="container d-flex justify-content-between align-items-center">
-            <span class="text-muted" id="version-text">v1.1.0</span>
-            <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#sourcesModal" data-lang-key="sources">
-                Sources
-            </button>
+            <span class="text-muted" id="version-text">v1.8.0</span> <!-- Version bump for dnd -->
+            
+            <div class="btn-group" role="group">
+                <!-- Import Button -->
+                <button class="btn btn-outline-secondary btn-sm file-input-wrapper">
+                    <i class="bi bi-upload"></i> <span data-lang-key="import_settings">Import</span>
+                    <input type="file" id="import-file-input" accept=".json">
+                </button>
+                
+                <!-- Export Button -->
+                <button class="btn btn-outline-secondary btn-sm" id="export-settings-btn">
+                    <i class="bi bi-download"></i> <span data-lang-key="export_settings">Export</span>
+                </button>
+                
+                <!-- Sources Button -->
+                <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#sourcesModal" data-lang-key="sources">
+                    Sources
+                </button>
+            </div>
         </div>
     </footer>
 
     <!-- Sources Modal -->
-    <div class="modal fade" id="sourcesModal" tabindex="-1" aria-labelledby="sourcesModalLabel" aria-hidden="true">
+    <div class="modal fade" id="sourcesModal" tabindex="1" aria-labelledby="sourcesModalLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
@@ -269,10 +350,13 @@
                         This application is a client-side portfolio tracker. All data is saved in your browser's local storage.
                     </p>
                     <p data-lang-key="sources_modal_p2">
-                        This application attempts to connect directly to Yahoo Finance APIs (`query1.finance.yahoo.com`, `query2.finance.yahoo.com`) to fetch autocomplete suggestions and live market prices.
+                        This application uses a server-side proxy to fetch live market data from Yahoo Finance APIs (`query1.finance.yahoo.com`, `query2.finance.yahoo.com`).
                     </p>
                     <p data-lang-key="sources_modal_p3">
-                        Due to browser security restrictions (CORS), this will <strong>only work if you are using a CORS-blocking browser extension</strong> (like "Allow CORS").
+                        All data is fetched securely through your own server, avoiding browser CORS restrictions.
+                    </p>
+                    <p class="mt-3">
+                        Drag-and-drop functionality is provided by <a href="https://github.com/SortableJS/Sortable" target="_blank">SortableJS</a>.
                     </p>
                 </div>
                 <div class="modal-footer">
@@ -294,8 +378,24 @@
                 portfolio: 'portfolioTrackerPortfolio_v1',
                 prices: 'portfolioTrackerPrices_v1',
                 theme: 'portfolioTrackerTheme_v1',
-                lang: 'portfolioTrackerLang_v1'
+                lang: 'portfolioTrackerLang_v1',
+                refresh: 'portfolioTrackerRefresh_v1',
+                mainCurrency: 'portfolioTrackerMainCurrency_v1' // For main currency
             };
+
+            const REFRESH_INTERVALS = {
+                '5s': 5000,
+                '10s': 10000,
+                '30s': 30000,
+                '60s': 60000,
+                '300s': 300000, // 5 min
+                '600s': 600000, // 10 min
+                '900s': 900000, // 15 min
+                'manual': 0
+            };
+            
+            // All keys to backup for import/export
+            const ALL_STORAGE_KEYS = Object.values(STORAGE_KEYS);
 
             const LANGUAGES = {
                 en: {
@@ -308,13 +408,14 @@
                     asset_name: "Asset Name",
                     units: "Units",
                     cost_per_unit: "Cost / Unit",
+                    commission: "Commission",
                     save: "Save",
                     cancel: "Cancel",
-                    autocomplete_info: "Start typing a symbol to search. Requires a CORS browser extension.",
+                    autocomplete_info: "Start typing a symbol to search.",
                     sources: "Sources",
                     sources_modal_p1: "This application is a client-side portfolio tracker. All data is saved in your browser's local storage.",
-                    sources_modal_p2: "This application attempts to connect directly to Yahoo Finance APIs (`query1.finance.yahoo.com`, `query2.finance.yahoo.com`) to fetch autocomplete suggestions and live market prices.",
-                    sources_modal_p3: "Due to browser security restrictions (CORS), this will <strong>only work if you are using a CORS-blocking browser extension</strong> (like \"Allow CORS\").",
+                    sources_modal_p2: "This application uses a server-side proxy to fetch live market data from Yahoo Finance APIs (`query1.finance.yahoo.com`, `query2.finance.yahoo.com`).",
+                    sources_modal_p3: "All data is fetched securely through your own server, avoiding browser CORS restrictions.",
                     close: "Close",
                     total_units: "Total Units",
                     avg_cost: "Avg. Cost",
@@ -327,32 +428,49 @@
                     current_value: "Current Value",
                     pl: "P/L",
                     actions: "Actions",
+                    edit: "Edit",
                     add_lot: "Add Lot",
                     remove_asset: "Remove Asset",
                     lot_cost: "Lot Cost",
                     refresh_prices: "Refresh Prices",
+                    auto_refresh: "Auto-Refresh",
+                    manual_refresh: "Manual",
+                    main_currency: "Main Currency",
+                    exchange_rate: "Exch. Rate",
+                    current_value_main: "Value (Main)",
+                    pl_main: "P/L (Main)",
+                    total_portfolio_value: "Total Portfolio Value",
+                    total_portfolio_pl: "Total Portfolio P/L",
                     portfolio_empty: "Your portfolio is empty. Click \"Add Asset\" to get started.",
                     fetching_prices: "Fetching prices...",
-                    remove_asset_confirm: "Are you sure you want to remove this entire asset and all its lots?",
-                    remove_lot_confirm: "Are you sure you want to remove this single lot?"
+                    confirm_remove_asset: "Are you sure you want to remove this entire asset and all its lots?",
+                    confirm_remove_lot: "Are you sure you want to remove this lot?",
+                    invalid_input: "Please enter valid numbers for all fields.",
+                    import_settings: "Import",
+                    export_settings: "Export",
+                    import_confirm: "This will overwrite all current settings and portfolio data. Are you sure?",
+                    import_error_title: "Import Error",
+                    import_error_invalid_file: "Invalid file format. Please choose a .json file exported from this application.",
+                    import_success: "Settings imported successfully. The page will now reload."
                 },
                 pl: {
                     title: "Monitor Portfela",
                     my_portfolio: "Mój Portfel",
                     add_asset: "Dodaj Aktywo",
                     add_new_asset: "Dodaj Nowe Aktywo",
-                    add_asset_desc: "Wprowadź symbol, nazwę aktywa oraz szczegóły pierwszej transakcji zakupu.",
+                    add_asset_desc: "Wprowadź symbol, nazwę aktywa oraz szczególy pierwszej transakcji zakupu.",
                     symbol: "Symbol",
                     asset_name: "Nazwa Aktywa",
                     units: "Ilość",
                     cost_per_unit: "Koszt / Jedn.",
+                    commission: "Prowizja",
                     save: "Zapisz",
                     cancel: "Anuluj",
-                    autocomplete_info: "Zacznij wpisywać symbol, aby wyszukać. Wymaga rozszerzenia przeglądarki blokującego CORS.",
+                    autocomplete_info: "Zacznij wpisywać symbol, aby wyszukać.",
                     sources: "Źródła",
                     sources_modal_p1: "Ta aplikacja to klient-side'owy monitor portfela. Wszystkie dane są zapisywane w lokalnej pamięci przeglądarki.",
-                    sources_modal_p2: "Ta aplikacja próbuje łączyć się bezpośrednio z API Yahoo Finance (`query1.finance.yahoo.com`, `query2.finance.yahoo.com`), aby pobierać sugestie autouzupełniania i aktualne ceny rynkowe.",
-                    sources_modal_p3: "Z powodu ograniczeń bezpieczeństwa przeglądarki (CORS), będzie to działać <strong>tylko jeśli używasz rozszerzenia przeglądarki blokującego CORS</strong> (np. \"Allow CORS\").",
+                    sources_modal_p2: "Ta aplikacja używa serwerowego proxy do pobierania danych rynkowych z API Yahoo Finance (`query1.finance.yahoo.com`, `query2.finance.yahoo.com`).",
+                    sources_modal_p3: "Wszystkie dane są pobierane bezpiecznie przez twój własny serwer, co pozwala ominąć ograniczenia CORS przeglądarki.",
                     close: "Zamknij",
                     total_units: "Suma Jedn.",
                     avg_cost: "Śr. Koszt",
@@ -365,31 +483,63 @@
                     current_value: "Aktualna Wartość",
                     pl: "Z/S",
                     actions: "Akcje",
+                    edit: "Edytuj",
                     add_lot: "Dodaj Transakcję",
                     remove_asset: "Usuń Aktywo",
                     lot_cost: "Koszt Trans.",
                     refresh_prices: "Odśwież Ceny",
+                    auto_refresh: "Auto-Odświeżanie",
+                    manual_refresh: "Ręczne",
+                    main_currency: "Główna Waluta",
+                    exchange_rate: "Kurs Wym.",
+                    current_value_main: "Wartość (Gł.)",
+                    pl_main: "Z/S (Gł.)",
+                    total_portfolio_value: "Całkowita Wartość Portfela",
+                    total_portfolio_pl: "Całkowity Z/S Portfela",
                     portfolio_empty: "Twój portfel jest pusty. Kliknij \"Dodaj Aktywo\", aby zacząć.",
                     fetching_prices: "Pobieranie cen...",
-                    remove_asset_confirm: "Czy na pewno chcesz usunąć całe to aktywo i wszystkie jego transakcje?",
-                    remove_lot_confirm: "Czy na pewno chcesz usunąć tę pojedynczą transakcję?"
+                    confirm_remove_asset: "Czy na pewno chcesz usunąć to aktywo i wszystkie jego transakcje?",
+                    confirm_remove_lot: "Czy na pewno chcesz usunąć tę transakcję?",
+                    invalid_input: "Proszę wprowadzić prawidłowe liczby we wszystkich polach.",
+                    import_settings: "Importuj",
+                    export_settings: "Eksportuj",
+                    import_confirm: "Spowoduje to nadpisanie wszystkich obecnych ustawień i danych portfela. Jesteś pewien?",
+                    import_error_title: "Błąd Importu",
+                    import_error_invalid_file: "Nieprawidłowy format pliku. Proszę wybrać plik .json wyeksportowany z tej aplikacji.",
+                    import_success: "Ustawienia zaimportowane pomyślnie. Strona zostanie teraz ponownie załadowana."
                 }
             };
 
             // --- STATE ---
             let portfolio = [];
-            // currentPrices will store objects like: { "AAPL": { price: 150.00, currency: "USD" } }
-            let currentPrices = {};
+            let currentPrices = {}; // { SYMBOL: { price: 123.45, currency: 'USD' } }
+            let exchangeRates = {}; // { 'USDPLN=X': 4.01, 'EURPLN=X': 4.32 }
             let currentTheme = 'dark';
             let currentLang = 'en';
+            let mainCurrency = 'PLN'; // Default main currency
             let autocompleteDebounceTimer;
+            let openAccordionItems = new Set(); // For keeping rows open
+            let autoRefreshTimer = null; // For auto-refresh interval
+            let currentRefreshKey = '10s'; // Default refresh state
+            let editingLotId = null; // Track which lot is being edited
+            let activeSortable = null; // To disable/enable sortable instances
+            
+            // --- PROXY SCRIPT PATH ---
+            const PROXY_SCRIPT = 'proxy.php';
 
             // --- DOM REFERENCES ---
             const themeToggleBtn = document.getElementById('theme-toggle-btn');
             const langToggleBtn = document.getElementById('lang-toggle-btn');
+            const mainCurrencySelect = document.getElementById('main-currency-select');
             const portfolioListEl = document.getElementById('portfolio-list');
             const addAssetBtn = document.getElementById('add-asset-btn');
             const refreshPricesBtn = document.getElementById('refresh-prices-btn');
+            const autoRefreshSelect = document.getElementById('auto-refresh-select'); // Auto-refresh dropdown
+            
+            // Total Summary
+            const totalPortfolioSummaryEl = document.getElementById('total-portfolio-summary');
+            const totalValueDisplayEl = document.getElementById('total-value-display');
+            const totalPLDisplayEl = document.getElementById('total-pl-display');
             
             // New Asset Form
             const newAssetForm = document.getElementById('new-asset-form-row');
@@ -398,20 +548,27 @@
             const newNameInput = document.getElementById('new-name');
             const newUnitsInput = document.getElementById('new-units');
             const newCostInput = document.getElementById('new-cost');
+            const newCommissionInput = document.getElementById('new-commission'); // Commission input
             const saveNewAssetBtn = document.getElementById('save-new-asset-btn');
             const cancelNewAssetBtn = document.getElementById('cancel-new-asset-btn');
             
             // Add Lot Template
             const addLotFormTemplate = document.getElementById('add-lot-form-template');
+            
+            // Import/Export
+            const exportSettingsBtn = document.getElementById('export-settings-btn');
+            const importFileInput = document.getElementById('import-file-input');
 
             // --- INITIALIZATION ---
             function init() {
                 loadTheme();
                 loadLang();
+                loadMainCurrency();
                 loadPortfolio();
                 renderPortfolio();
                 attachEventListeners();
                 fetchPrices(); // Fetch prices on load
+                loadAutoRefresh(); // Load refresh settings and start timer
             }
             
             // --- THEME FUNCTIONS ---
@@ -460,23 +617,63 @@
                 // Re-render to update dynamic text in portfolio
                 renderPortfolio();
             }
+            
+            // --- CURRENCY FUNCTIONS ---
+            function loadMainCurrency() {
+                const storedCurrency = localStorage.getItem(STORAGE_KEYS.mainCurrency);
+                mainCurrency = storedCurrency || 'PLN'; // Default PLN
+                applyMainCurrency(mainCurrency);
+            }
+            
+            function applyMainCurrency(currency) {
+                mainCurrency = currency;
+                localStorage.setItem(STORAGE_KEYS.mainCurrency, currency);
+                mainCurrencySelect.value = currency;
+                
+                // We need to fetch prices again to get the right exchange rates
+                // and re-render the whole portfolio
+                fetchPrices();
+                // renderPortfolio() will be called by fetchPrices()
+            }
+            
+            /**
+             * Gets the exchange rate for a given asset currency against the main currency.
+             */
+            function getExchangeRate(assetCurrency) {
+                if (assetCurrency === mainCurrency) {
+                    return 1;
+                }
+                const pair = `${assetCurrency}${mainCurrency}=X`;
+                return exchangeRates[pair] || 0; // Return 0 if rate not found
+            }
+            
+            /**
+             * Converts a value from its asset currency to the main currency.
+             */
+            function convertToMainCurrency(value, assetCurrency) {
+                if (typeof value !== 'number') return 0;
+                
+                const rate = getExchangeRate(assetCurrency);
+                return value * rate;
+            }
 
             // --- PORTFOLIO DATA FUNCTIONS ---
             function loadPortfolio() {
+                // Wrap in try...catch to prevent bad data from crashing the app
                 try {
                     portfolio = JSON.parse(localStorage.getItem(STORAGE_KEYS.portfolio)) || [];
                 } catch (e) {
-                    console.error('Error parsing portfolio from localStorage:', e);
-                    portfolio = []; // Reset to empty array on error
-                    localStorage.removeItem(STORAGE_KEYS.portfolio); // Clear corrupted data
+                    console.error('Failed to parse portfolio from localStorage', e);
+                    portfolio = []; // Reset portfolio
+                    localStorage.removeItem(STORAGE_KEYS.portfolio); // Clear bad data
                 }
                 
                 try {
-                    currentPrices = JSON.parse(localStorage.getItem(STORAGE_KEYS.prices)) || {};
+                    currentPrices = JSON.parse(localStorage.getItem(STORAGE_KEYS.prices)) || {}; // Was array, should be object
                 } catch (e) {
-                    console.error('Error parsing prices from localStorage:', e);
-                    currentPrices = {}; // Reset to empty object on error
-                    localStorage.removeItem(STORAGE_KEYS.prices); // Clear corrupted data
+                    console.error('Failed to parse prices from localStorage', e);
+                    currentPrices = {}; // Reset prices
+                    localStorage.removeItem(STORAGE_KEYS.prices); // Clear bad data
                 }
             }
 
@@ -485,11 +682,35 @@
                 localStorage.setItem(STORAGE_KEYS.prices, JSON.stringify(currentPrices));
             }
 
+            // --- AUTO-REFRESH FUNCTIONS ---
+            function loadAutoRefresh() {
+                const storedKey = localStorage.getItem(STORAGE_KEYS.refresh) || '10s'; // Default 10s
+                applyAutoRefresh(storedKey);
+            }
+
+            function applyAutoRefresh(key) {
+                currentRefreshKey = key;
+                localStorage.setItem(STORAGE_KEYS.refresh, key);
+                autoRefreshSelect.value = key; // Update dropdown to match
+
+                if (autoRefreshTimer) {
+                    clearInterval(autoRefreshTimer);
+                    autoRefreshTimer = null;
+                }
+
+                if (key === 'manual') {
+                    refreshPricesBtn.disabled = false;
+                } else {
+                    refreshPricesBtn.disabled = true;
+                    const interval = REFRESH_INTERVALS[key];
+                    if (interval > 0) {
+                        autoRefreshTimer = setInterval(fetchPrices, interval);
+                    }
+                }
+            }
+
             // --- API FUNCTIONS ---
             
-            /**
-             * Debounce utility to prevent excessive API calls
-             */
             function debounce(func, delay) {
                 return function(...args) {
                     clearTimeout(autocompleteDebounceTimer);
@@ -499,9 +720,6 @@
                 };
             }
             
-            /**
-             * Fetch autocomplete suggestions from Yahoo Finance
-             */
             async function fetchAutocomplete(query) {
                 if (query.length < 1) {
                     autocompleteList.classList.add('d-none');
@@ -509,12 +727,12 @@
                 }
                 
                 try {
-                    // Using the new search URL provided
-                    const response = await fetch(`https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query)}&lang=en-US&region=US&quotesCount=7&enableCb=false&enableNavLinks=true`);
+                    const targetApiUrl = `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query)}&lang=en-US&region=US&quotesCount=7&enableCb=false&enableNavLinks=true`;
+                    const response = await fetch(`${PROXY_SCRIPT}?url=${encodeURIComponent(targetApiUrl)}`);
+                    
                     if (!response.ok) throw new Error('Autocomplete API response not ok');
                     
                     const data = await response.json();
-                    // The new API returns suggestions in the 'quotes' array
                     const suggestions = data.quotes; 
                     
                     renderAutocomplete(suggestions);
@@ -533,7 +751,6 @@
                 }
                 
                 suggestions.slice(0, 7).forEach(item => {
-                    // New API structure uses longname or shortname
                     const name = item.longname || item.shortname || item.symbol;
                     const el = document.createElement('button');
                     el.type = 'button';
@@ -555,160 +772,242 @@
                 autocompleteList.classList.remove('d-none');
             }
             
-            /**
-             * Fetch current prices for all assets in portfolio
-             */
+            async function fetchYahooPriceData(symbol) {
+                try {
+                    const period2 = Math.floor(Date.now() / 1000); // Now
+                    const period1 = period2 - (7 * 24 * 60 * 60); // 7 days ago
+                    
+                    const targetApiUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?period1=${period1}&period2=${period2}&interval=1d&includePrePost=true&events=div%7Csplit%7Cearn&lang=en-US&region=US`;
+                    
+                    const response = await fetch(`${PROXY_SCRIPT}?url=${encodeURIComponent(targetApiUrl)}`);
+                    
+                    if (!response.ok) {
+                        console.warn(`Failed to fetch price for ${symbol}`);
+                        return null;
+                    }
+                    
+                    const data = await response.json();
+                    
+                    if (data && data.chart && data.chart.result && data.chart.result[0] && data.chart.result[0].meta) {
+                        const meta = data.chart.result[0].meta;
+                        const price = meta.regularMarketPrice;
+                        const currency = meta.currency || 'USD';
+                        return { symbol, price, currency };
+                    } else {
+                        console.warn(`Unexpected data structure for ${symbol}`, data);
+                        return null;
+                    }
+                } catch (err) {
+                    console.error(`Error fetching ${symbol}:`, err);
+                    return null;
+                }
+            }
+            
             async function fetchPrices() {
-                if (portfolio.length === 0) return;
+                if (portfolio.length === 0) {
+                    renderPortfolio();
+                    return;
+                }
                 
                 const originalBtnText = refreshPricesBtn.innerHTML;
                 refreshPricesBtn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> <span data-lang-key="fetching_prices">Fetching...</span>`;
                 refreshPricesBtn.disabled = true;
                 applyLang(currentLang);
 
-                // We can no longer fetch in a single batch. We must fetch one by one.
-                const symbols = portfolio.map(asset => asset.symbol);
+                const assetSymbols = portfolio.map(asset => asset.symbol);
+                const requiredRates = new Set();
                 
-                try {
-                    // Create date range for chart (e.g., last day)
-                    const period2 = Math.floor(Date.now() / 1000); // Now
-                    const period1 = period2 - (24 * 60 * 60); // 1 day ago (in seconds)
-                    
-                    const pricePromises = symbols.map(symbol => {
-                        // Use the new URL structure, replacing the hardcoded symbol and periods
-                        const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?period1=${period1}&period2=${period2}&interval=1m&includePrePost=true&events=div%7Csplit%7Cearn&lang=en-US&region=US`;
+                // First pass: Fetch asset prices
+                const pricePromises = assetSymbols.map(fetchYahooPriceData);
+                const assetResults = await Promise.all(pricePromises);
+                
+                let pricesUpdated = false;
+                assetResults.forEach(result => {
+                    if (result && result.price !== undefined) {
+                        currentPrices[result.symbol] = {
+                            price: result.price || 0,
+                            currency: result.currency || 'USD'
+                        };
+                        pricesUpdated = true;
                         
-                        return fetch(url)
-                            .then(response => {
-                                if (!response.ok) {
-                                    console.warn(`Failed to fetch price for ${symbol}`);
-                                    return null; // Don't block other requests
-                                }
-                                return response.json();
-                            })
-                            .then(data => {
-                                if (data && data.chart && data.chart.result && data.chart.result[0] && data.chart.result[0].meta) {
-                                    // *** CHANGED: Get price and currency ***
-                                    const meta = data.chart.result[0].meta;
-                                    const price = meta.regularMarketPrice;
-                                    const currency = meta.currency;
-                                    return { symbol, price, currency };
-                                } else {
-                                    console.warn(`Unexpected data structure for ${symbol}`, data);
-                                    return null;
-                                }
-                            })
-                            .catch(err => {
-                                console.error(`Error fetching ${symbol}:`, err);
-                                return null; // Handle individual failures
-                            });
-                    });
-                    
-                    const results = await Promise.all(pricePromises);
-                    
-                    let pricesUpdated = false;
-                    results.forEach(result => {
-                        // *** CHANGED: Store price and currency object ***
-                        if (result && result.price !== undefined) {
-                            currentPrices[result.symbol] = {
-                                price: result.price || 0,
-                                currency: result.currency || 'USD' // Fallback to USD
-                            };
-                            pricesUpdated = true;
+                        if (result.currency !== mainCurrency) {
+                            requiredRates.add(`${result.currency}${mainCurrency}=X`);
                         }
-                    });
-                    
-                    if (pricesUpdated) {
-                        savePortfolio();
-                        renderPortfolio();
                     }
-                    
-                } catch (error) {
-                    console.error('Error fetching prices:', error);
-                    alert('Error fetching prices. Please ensure your CORS extension is active and try again.');
-                } finally {
-                    refreshPricesBtn.innerHTML = originalBtnText;
-                    refreshPricesBtn.disabled = false;
-                    applyLang(currentLang);
+                });
+                
+                // 2. Second pass: Fetch all required exchange rates
+                const ratePromises = Array.from(requiredRates).map(fetchYahooPriceData);
+                const rateResults = await Promise.all(ratePromises);
+                
+                exchangeRates = {};
+                rateResults.forEach(result => {
+                    if (result && result.price) {
+                        exchangeRates[result.symbol] = result.price;
+                    }
+                });
+
+                if (pricesUpdated) {
+                    savePortfolio();
                 }
+                
+                renderPortfolio();
+                    
+                refreshPricesBtn.innerHTML = originalBtnText;
+                if (currentRefreshKey === 'manual') {
+                    refreshPricesBtn.disabled = false;
+                }
+                applyLang(currentLang);
             }
 
 
             // --- RENDERING ---
+            
+            /**
+             * Controls the state of all SortableJS instances.
+             * Used to disable dragging while editing/adding lots.
+             */
+            function setSortableState(enabled) {
+                if (!activeSortable) return;
+                
+                // assetSortable might be null if portfolio was empty, so check
+                if (activeSortable.assetSortable) {
+                    activeSortable.assetSortable.option("disabled", !enabled);
+                }
+                activeSortable.lotSortables.forEach(s => s.option("disabled", !enabled));
+            }
+
             function renderPortfolio() {
+                // Destroy old sortable instances if they exist
+                if (activeSortable) {
+                    // FIX: Check if assetSortable is not null before destroying
+                    if (activeSortable.assetSortable) {
+                        activeSortable.assetSortable.destroy();
+                    }
+                    activeSortable.lotSortables.forEach(s => s.destroy());
+                }
+                activeSortable = { assetSortable: null, lotSortables: [] };
+                
                 portfolioListEl.innerHTML = ''; // Clear list
                 
                 if (portfolio.length === 0) {
                      portfolioListEl.innerHTML = `<div class="alert alert-info" data-lang-key="portfolio_empty">Your portfolio is empty. Click "Add Asset" to get started.</div>`;
+                     totalPortfolioSummaryEl.classList.add('d-none'); // Hide summary
                      applyLang(currentLang); // Apply lang to new element
-                     return;
+                     return; // <-- This was causing the issue
                 }
+                
+                totalPortfolioSummaryEl.classList.remove('d-none');
+                
+                let grandTotalValue = 0;
+                let grandTotalCost = 0;
 
                 portfolio.forEach(asset => {
-                    const assetEl = createAssetElement(asset);
+                    const { assetEl, totalValueMain, totalCostMain } = createAssetElement(asset);
                     portfolioListEl.appendChild(assetEl);
+                    
+                    grandTotalValue += totalValueMain;
+                    grandTotalCost += totalCostMain;
                 });
+                
+                // Calculate and display grand totals
+                const grandTotalPL = grandTotalValue - grandTotalCost;
+                const grandTotalPLPercent = grandTotalCost > 0 ? (grandTotalPL / grandTotalCost) * 100 : 0;
+                const plInfo = getPnLInfo(grandTotalPL);
+
+                totalValueDisplayEl.textContent = formatCurrency(grandTotalValue, mainCurrency);
+                totalPLDisplayEl.innerHTML = `
+                    ${formatCurrency(grandTotalPL, mainCurrency)}
+                    <span class="fs-6 fw-normal ${plInfo.textClass}">
+                        (${formatPercent(grandTotalPLPercent)})
+                        <i class="bi ${plInfo.icon}"></i>
+                    </span>
+                `;
+                totalPLDisplayEl.className = `fs-4 fw-bold ${plInfo.textClass}`;
                 
                 // Re-apply language to all newly created elements
                 applyLang(currentLang);
+                
+                // Initialize SortableJS
+                initSortable();
             }
             
             function createAssetElement(asset) {
-                // *** CHANGED: Get price and currency from stored object ***
                 const currentPriceData = currentPrices[asset.symbol] || { price: 0, currency: 'USD' };
                 const currentPrice = currentPriceData.price;
-                const currency = currentPriceData.currency;
+                const assetCurrency = currentPriceData.currency;
                 
-                // Calculate totals
-                // *** CHANGED: Added (lot.units || 0) to prevent NaN from undefined data ***
+                const exchangeRate = getExchangeRate(assetCurrency);
+                
+                // Calculate totals in ASSET currency
                 const totalUnits = asset.lots.reduce((sum, lot) => sum + (lot.units || 0), 0);
-                // *** CHANGED: Added (lot.units || 0) and (lot.cost || 0) to prevent NaN ***
-                const totalCost = asset.lots.reduce((sum, lot) => sum + ((lot.units || 0) * (lot.cost || 0)), 0);
+                const totalCost = asset.lots.reduce((sum, lot) => {
+                    const commission = lot.commission || 0;
+                    return sum + ((lot.units || 0) * (lot.cost || 0)) + commission;
+                }, 0);
                 const avgCost = totalUnits > 0 ? totalCost / totalUnits : 0;
                 const totalValue = totalUnits * currentPrice;
                 const totalPL = totalValue - totalCost;
-                const totalPLPercent = totalCost > 0 ? (totalPL / totalCost) * 100 : 0;
-                const plInfo = getPnLInfo(totalPL);
+                
+                // Calculate totals in MAIN currency
+                const totalValueMain = convertToMainCurrency(totalValue, assetCurrency);
+                const totalCostMain = convertToMainCurrency(totalCost, assetCurrency);
+                const totalPLMain = totalValueMain - totalCostMain;
+                const totalPLPercent = totalCostMain > 0 ? (totalPLMain / totalCostMain) * 100 : 0;
+                
+                const plInfo = getPnLInfo(totalPLMain);
+                const isExpanded = openAccordionItems.has(asset.id);
+                const isDifferentCurrency = assetCurrency !== mainCurrency;
 
                 const template = document.createElement('div');
                 template.className = 'accordion-item';
-                
-                // *** CHANGED: Updated accordion button layout ***
+                template.dataset.assetId = asset.id; // Add asset ID for sorting
                 template.innerHTML = `
                     <h2 class="accordion-header">
-                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-${asset.id}">
+                        <button class="accordion-button ${isExpanded ? '' : 'collapsed'}" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-${asset.id}">
                             <div class="d-flex flex-wrap w-100 align-items-center">
                                 
-                                <!-- Left Side: Symbol & Name -->
+                                <!-- Drag Handle -->
+                                <span class="asset-drag-handle" title="Drag to reorder">
+                                    <i class="bi bi-grip-vertical"></i>
+                                </span>
+
+                                <!-- Left Side: Name -->
                                 <div class="me-auto">
                                     <strong class="fs-5 me-2">${asset.symbol}</strong>
                                     <span class="text-muted">${asset.name}</span>
+                                    
+                                    <div class="d-md-none small text-muted mt-1">
+                                        ${totalUnits.toFixed(5)} <span data-lang-key="units">Units</span>
+                                        &bull;
+                                        ${formatCurrency(totalValueMain, mainCurrency)} <span data-lang-key="total_value">Value</span>
+                                    </div>
                                 </div>
                                 
                                 <!-- Right Side: Stats & Buttons -->
                                 <div class="d-flex align-items-center">
                                     <!-- Stats (hidden on small, shown on medium+) -->
                                     <div class="d-none d-md-flex align-items-center me-3">
-                                        <div class="me-3 text-end">
+                                        <div class="me-3 text-end header-stat">
                                             <span class="small text-muted" data-lang-key="total_units">Total Units</span>
-                                            <div class="fw-bold">${totalUnits.toFixed(2)}</div>
+                                            <div class="fw-bold">${totalUnits.toFixed(5)}</div>
                                         </div>
-                                        <div class="me-3 text-end">
+                                        <div class="me-3 text-end header-stat">
                                             <span class="small text-muted" data-lang-key="current_price">Current Price</span>
-                                            <div class="fw-bold">${formatCurrency(currentPrice, currency)}</div>
+                                            <div class="fw-bold">${formatCurrency(convertToMainCurrency(currentPrice, assetCurrency), mainCurrency)}</div>
                                         </div>
-                                        <div class="me-3 text-end">
+                                        <div class="me-3 text-end header-stat">
                                             <span class="small text-muted" data-lang-key="total_value">Total Value</span>
-                                            <div class="fw-bold">${formatCurrency(totalValue, currency)}</div>
+                                            <div class="fw-bold">${formatCurrency(totalValueMain, mainCurrency)}</div>
                                         </div>
-                                        <div class="text-end ${plInfo.textClass}">
+                                        <div class="text-end header-stat ${plInfo.textClass}">
                                             <span class="small text-muted" data-lang-key="total_pl">Total P/L</span>
-                                            <div class="fw-bold">${formatCurrency(totalPL, currency)} (${formatPercent(totalPLPercent)})</div>
+                                            <div class="fw-bold">${formatCurrency(totalPLMain, mainCurrency)} (${formatPercent(totalPLPercent)})</div>
                                         </div>
                                     </div>
 
-                                    <!-- Buttons (part of original code) -->
-                                    <div class="btn-group d-none d-lg-flex" role="group">
+                                    <!-- Buttons -->
+                                    <div class="btn-group d-none d-lg-flex ms-lg-3" role="group">
                                         <button class="btn btn-sm btn-outline-success" data-action="add-lot" data-asset-id="${asset.id}" title="Add Lot">
                                             <i class="bi bi-plus-lg"></i> <span data-lang-key="add_lot">Add Lot</span>
                                         </button>
@@ -720,33 +1019,34 @@
                             </div>
                         </button>
                     </h2>
-                    <div id="collapse-${asset.id}" class="accordion-collapse collapse">
+                    <div id="collapse-${asset.id}" class="accordion-collapse collapse ${isExpanded ? 'show' : ''}">
                         <div class="accordion-body">
-                            <!-- Asset Summary -->
+                            <!-- Asset Summary (in ASSET currency) -->
                             <div class="asset-summary-grid mb-3">
                                 <div>
-                                    <span class="small text-muted" data-lang-key="total_units">Total Units</span>
-                                    <div class="fs-5">${totalUnits.toFixed(2)}</div>
-                                </div>
-                                <div>
                                     <span class="small text-muted" data-lang-key="avg_cost">Avg. Cost</span>
-                                    <div class="fs-5">${formatCurrency(avgCost, currency)}</div>
+                                    <div class="fs-5">${formatCurrency(avgCost, assetCurrency)}</div>
+                                </div>
+                                <div class="d-md-none">
+                                    <span class="small text-muted" data-lang-key="total_value">Total Value</span>
+                                    <div class="fs-5">${formatCurrency(totalValue, assetCurrency)}</div>
                                 </div>
                                 <div>
-                                    <span class="small text-muted" data-lang-key="total_value">Total Value</span>
-                                    <div class="fs-5">${formatCurrency(totalValue, currency)}</div>
+                                    <span class="small text-muted" data-lang-key="current_price">Current Price</span>
+                                    <div class="fs-5">${formatCurrency(currentPrice, assetCurrency)}</div>
                                 </div>
-                                <div class="${plInfo.textClass}">
+                                <div>
                                     <span class="small text-muted" data-lang-key="total_pl">Total P/L</span>
-                                    <div class="fs-5">
-                                        ${formatCurrency(totalPL, currency)} <i class="bi ${plInfo.icon}"></i>
-                                        (${formatPercent(totalPLPercent)})
+                                    <div class="fs-5 ${getPnLInfo(totalPL).textClass}">
+                                        ${formatCurrency(totalPL, assetCurrency)}
                                     </div>
                                 </div>
-                                <div class="col-span-2">
-                                    <span class="small text-muted" data-lang-key="current_price">Current Price</span>
-                                    <div class="fs-5">${formatCurrency(currentPrice, currency)}</div>
+                                ${isDifferentCurrency ? `
+                                <div>
+                                    <span class="small text-muted" data-lang-key="exchange_rate">Exch. Rate</span>
+                                    <div class="fs-5">1 ${assetCurrency} = ${exchangeRate.toFixed(4)} ${mainCurrency}</div>
                                 </div>
+                                ` : ''}
                             </div>
                             
                             <!-- Small screen buttons -->
@@ -765,17 +1065,22 @@
                                 <table class="table table-sm align-middle">
                                     <thead>
                                         <tr>
+                                            <th></th> <!-- Column for drag handle -->
                                             <th data-lang-key="units">Units</th>
                                             <th data-lang-key="cost_per_unit">Cost / Unit</th>
+                                            <th data-lang-key="commission">Commission</th>
                                             <th data-lang-key="lot_cost">Lot Cost</th>
                                             <th data-lang-key="current_value">Current Value</th>
                                             <th data-lang-key="pl">P/L</th>
+                                            ${isDifferentCurrency ? `
+                                            <th data-lang-key="current_value_main">Value (Main)</th>
+                                            <th data-lang-key="pl_main">P/L (Main)</th>
+                                            ` : ''}
                                             <th data-lang-key="actions">Actions</th>
                                         </tr>
                                     </thead>
-                                    <tbody>
-                                        <!-- *** CHANGED: Pass currency to createLotRow *** -->
-                                        ${asset.lots.map(lot => createLotRow(lot, currentPrice, currency)).join('')}
+                                    <tbody class="lots-table-body" data-asset-id="${asset.id}">
+                                        ${asset.lots.map(lot => createLotRow(lot, currentPrice, assetCurrency, exchangeRate)).join('')}
                                     </tbody>
                                 </table>
                             </div>
@@ -785,39 +1090,177 @@
                         </div>
                     </div>
                 `;
-                return template;
+                return { assetEl: template, totalValueMain, totalCostMain };
             }
             
-            // *** CHANGED: Accept currency parameter ***
-            function createLotRow(lot, currentPrice, currency) {
-                // *** CHANGED: Add fallbacks for units and cost to prevent errors from bad data ***
+            function createLotRow(lot, currentPrice, assetCurrency, exchangeRate) {
+                const isDifferentCurrency = assetCurrency !== mainCurrency;
+                
+                if (editingLotId === lot.id) {
+                    const units = lot.units || 0;
+                    const cost = lot.cost || 0;
+                    const commission = lot.commission || 0;
+                    
+                    return `
+                        <tr data-lot-id="${lot.id}" data-asset-id="${lot.assetId}">
+                            <td></td> <!-- Placeholder for handle -->
+                            <td class="align-middle">
+                                <input type="number" class="form-control form-control-sm edit-lot-input-units" data-edit="units" value="${units.toFixed(5)}" step="0.00001">
+                            </td>
+                            <td class="align-middle">
+                                <input type="number" class="form-control form-control-sm edit-lot-input" data-edit="cost" value="${cost.toFixed(2)}">
+                            </td>
+                            <td class="align-middle">
+                                <input type="number" class="form-control form-control-sm edit-lot-input" data-edit="commission" value="${commission.toFixed(2)}">
+                            </td>
+                            <td>...</td>
+                            <td>...</td>
+                            <td>...</td>
+                            ${isDifferentCurrency ? '<td>...</td><td>...</td>' : ''}
+                            <td>
+                                <div class="btn-group gap-2">
+                                    <button class="btn btn-outline-success btn-sm" data-action="save-edit-lot">
+                                        <i class="bi bi-check-lg"></i>
+                                    </button>
+                                    <button class="btn btn-outline-secondary btn-sm" data-action="cancel-edit-lot">
+                                        <i class="bi bi-x-lg"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                }
+                
+                // Standard view row
                 const units = lot.units || 0;
                 const cost = lot.cost || 0;
+                const commission = lot.commission || 0;
                 
-                const lotCost = units * cost;
+                const lotCost = (units * cost) + commission;
                 const lotValue = units * currentPrice;
                 const lotPL = lotValue - lotCost;
                 const lotPLPercent = lotCost > 0 ? (lotPL / lotCost) * 100 : 0;
                 const plInfo = getPnLInfo(lotPL);
                 
+                let lotValueMain, lotCostMain, lotPLMain, plInfoMain;
+                if (isDifferentCurrency) {
+                    lotValueMain = lotValue * exchangeRate;
+                    lotCostMain = lotCost * exchangeRate;
+                    lotPLMain = lotValueMain - lotCostMain;
+                    plInfoMain = getPnLInfo(lotPLMain);
+                }
+                
                 return `
-                    <tr data-lot-id="${lot.id}">
-                        <td>${units.toFixed(2)}</td>
-                        <td>${formatCurrency(cost, currency)}</td>
-                        <td>${formatCurrency(lotCost, currency)}</td>
-                        <td>${formatCurrency(lotValue, currency)}</td>
-                        <td class="${plInfo.textClass}">
-                            ${formatCurrency(lotPL, currency)}
-                            (${formatPercent(lotPLPercent)})
-                            <i class="bi ${plInfo.icon}"></i>
+                    <tr data-lot-id="${lot.id}" data-asset-id="${lot.assetId}">
+                        <!-- Drag Handle -->
+                        <td class="lot-drag-handle" title="Drag to reorder">
+                            <i class="bi bi-grip-vertical"></i>
                         </td>
+                        <td>${units.toFixed(5)}</td>
+                        <td>${formatCurrency(cost, assetCurrency)}</td>
+                        <td>${formatCurrency(commission, assetCurrency)}</td>
+                        <td>${formatCurrency(lotCost, assetCurrency)}</td>
+                        <td>${formatCurrency(lotValue, assetCurrency)}</td>
+                        <td class="${plInfo.textClass}">
+                            ${formatCurrency(lotPL, assetCurrency)}
+                            (${formatPercent(lotPLPercent)})
+                        </td>
+                        
+                        ${isDifferentCurrency ? `
+                        <td>${formatCurrency(lotValueMain, mainCurrency)}</td>
+                        <td class="${plInfoMain.textClass}">
+                            ${formatCurrency(lotPLMain, mainCurrency)}
+                        </td>
+                        ` : ''}
+                        
                         <td>
-                            <button class="btn btn-outline-danger btn-sm" data-action="remove-lot" data-asset-id="${lot.assetId}" data-lot-id="${lot.id}">
-                                <i class="bi bi-trash"></i>
-                            </button>
+                            <div class="btn-group gap-2">
+                                <button class="btn btn-outline-primary btn-sm" data-action="edit-lot" title="Edit Lot">
+                                    <i class="bi bi-pencil-fill"></i>
+                                </button>
+                                <button class="btn btn-outline-danger btn-sm" data-action="remove-lot" title="Remove Lot">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
                         </td>
                     </tr>
                 `;
+            }
+            
+            // --- DRAG AND DROP ---
+            
+            function initSortable() {
+                // 1. Asset List (Accordion)
+                activeSortable.assetSortable = new Sortable(portfolioListEl, {
+                    animation: 150,
+                    handle: '.asset-drag-handle', // Class of the drag handle
+                    ghostClass: 'sortable-ghost',
+                    chosenClass: 'sortable-chosen',
+                    onEnd: handleAssetReorder,
+                });
+
+                // 2. Each Lots Table
+                const lotTables = portfolioListEl.querySelectorAll('.lots-table-body');
+                lotTables.forEach(table => {
+                    const sortable = new Sortable(table, {
+                        animation: 150,
+                        handle: '.lot-drag-handle',
+                        ghostClass: 'sortable-ghost',
+                        chosenClass: 'sortable-chosen',
+                        onEnd: handleLotReorder,
+                    });
+                    activeSortable.lotSortables.push(sortable);
+                });
+                
+                // Disable if we are in an edit state
+                const isEditing = !!editingLotId || !!document.querySelector('[data-form-type="add-lot"]');
+                setSortableState(!isEditing);
+            }
+            
+            /**
+             * Called when an asset item is dropped.
+             */
+            function handleAssetReorder(evt) {
+                const movedAssetId = evt.item.dataset.assetId;
+                
+                // Find the asset and move it in the portfolio array
+                const movedAsset = portfolio.find(a => a.id === movedAssetId);
+                if (!movedAsset) return;
+                
+                // Remove from old position
+                portfolio = portfolio.filter(a => a.id !== movedAssetId);
+                
+                // Insert into new position
+                portfolio.splice(evt.newIndex, 0, movedAsset);
+                
+                savePortfolio();
+                // No re-render needed, SortableJS handles the DOM
+            }
+            
+            /**
+             * Called when a lot item is dropped.
+             */
+            function handleLotReorder(evt) {
+                const lotId = evt.item.dataset.lotId;
+                const assetId = evt.from.dataset.assetId; // Get assetId from tbody
+                
+                const asset = portfolio.find(a => a.id === assetId);
+                if (!asset) return;
+                
+                // Find the lot and move it in the asset.lots array
+                const movedLot = asset.lots.find(l => l.id === lotId);
+                if (!movedLot) return;
+                
+                // Remove from old position
+                asset.lots = asset.lots.filter(l => l.id !== lotId);
+                
+                // Insert into new position
+                asset.lots.splice(evt.newIndex, 0, movedLot);
+                
+                savePortfolio();
+                
+                // Must re-render to update calculations
+                renderPortfolio();
             }
             
             // --- EVENT HANDLERS ---
@@ -825,28 +1268,34 @@
             function attachEventListeners() {
                 themeToggleBtn.addEventListener('click', toggleTheme);
                 langToggleBtn.addEventListener('click', toggleLang);
+                mainCurrencySelect.addEventListener('change', () => {
+                    applyMainCurrency(mainCurrencySelect.value);
+                });
                 refreshPricesBtn.addEventListener('click', fetchPrices);
+                autoRefreshSelect.addEventListener('change', () => {
+                    applyAutoRefresh(autoRefreshSelect.value);
+                });
                 
-                // New Asset Form
+                exportSettingsBtn.addEventListener('click', handleExport);
+                importFileInput.addEventListener('change', handleImport);
+                
                 addAssetBtn.addEventListener('click', showNewAssetForm);
                 cancelNewAssetBtn.addEventListener('click', hideNewAssetForm);
                 saveNewAssetBtn.addEventListener('click', handleSaveNewAsset);
                 
-                // Autocomplete
                 newSymbolInput.addEventListener('keyup', debounce(e => fetchAutocomplete(e.target.value), 300));
-                // Hide autocomplete if clicking outside
                 document.addEventListener('click', (e) => {
                     if (!newAssetForm.contains(e.target)) {
                         autocompleteList.classList.add('d-none');
                     }
                 });
 
-                // Portfolio List (Event Delegation)
                 portfolioListEl.addEventListener('click', (e) => {
                     const target = e.target.closest('[data-action]');
                     if (!target) return;
                     
                     const action = target.dataset.action;
+                    const row = target.closest('tr');
                     
                     if (action === 'remove-asset') {
                         handleRemoveAsset(target.dataset.assetId);
@@ -855,7 +1304,7 @@
                         showAddLotForm(target.dataset.assetId);
                     }
                     if (action === 'remove-lot') {
-                        handleRemoveLot(target.dataset.assetId, target.dataset.lotId);
+                        handleRemoveLot(row.dataset.assetId, row.dataset.lotId);
                     }
                     if (action === 'save-lot') {
                         handleSaveLot(target.closest('[data-form-type="add-lot"]'));
@@ -863,6 +1312,24 @@
                     if (action === 'cancel-lot') {
                         hideAddLotForm(target.closest('[data-form-type="add-lot"]'));
                     }
+                    if (action === 'edit-lot') {
+                        handleEditLot(row.dataset.lotId);
+                    }
+                    if (action === 'save-edit-lot') {
+                        handleSaveEditLot(row);
+                    }
+                    if (action === 'cancel-edit-lot') {
+                        handleCancelEditLot();
+                    }
+                });
+                
+                portfolioListEl.addEventListener('show.bs.collapse', (e) => {
+                    const assetId = e.target.id.replace('collapse-', '');
+                    openAccordionItems.add(assetId);
+                });
+                portfolioListEl.addEventListener('hide.bs.collapse', (e) => {
+                    const assetId = e.target.id.replace('collapse-', '');
+                    openAccordionItems.delete(assetId);
                 });
             }
             
@@ -870,17 +1337,19 @@
                 newAssetForm.classList.remove('d-none');
                 addAssetBtn.classList.add('d-none');
                 newSymbolInput.focus();
+                setSortableState(false); // Disable dnd
             }
             
             function hideNewAssetForm() {
                 newAssetForm.classList.add('d-none');
                 addAssetBtn.classList.remove('d-none');
                 autocompleteList.classList.add('d-none');
-                // Clear inputs
                 newSymbolInput.value = '';
                 newNameInput.value = '';
                 newUnitsInput.value = '';
                 newCostInput.value = '';
+                newCommissionInput.value = '';
+                setSortableState(true); // Enable dnd
             }
             
             function handleSaveNewAsset() {
@@ -888,28 +1357,26 @@
                 const name = newNameInput.value.trim();
                 const units = parseFloat(newUnitsInput.value);
                 const cost = parseFloat(newCostInput.value);
+                const commission = parseFloat(newCommissionInput.value) || 0;
                 
-                if (!symbol || !name || isNaN(units) || isNaN(cost) || units <= 0 || cost < 0) {
-                    // Simple validation
-                    alert('Please fill in all fields with valid data. Units must be > 0 and cost must be >= 0.');
+                if (!symbol || !name || isNaN(units) || isNaN(cost) || units <= 0 || cost < 0 || commission < 0) {
+                    alert(LANGUAGES[currentLang].invalid_input);
                     return;
                 }
                 
-                // Check if asset already exists
                 let asset = portfolio.find(a => a.symbol === symbol);
                 
                 const newLot = {
                     id: crypto.randomUUID(),
                     assetId: asset ? asset.id : crypto.randomUUID(),
                     units: units,
-                    cost: cost
+                    cost: cost,
+                    commission: commission
                 };
                 
                 if (asset) {
-                    // Add lot to existing asset
                     asset.lots.push(newLot);
                 } else {
-                    // Create new asset
                     asset = {
                         id: newLot.assetId,
                         symbol: symbol,
@@ -919,27 +1386,50 @@
                     portfolio.push(asset);
                 }
                 
-                savePortfolio();
-                renderPortfolio();
-                hideNewAssetForm();
+                openAccordionItems.add(newLot.assetId);
                 
-                // Fetch price for the new asset
-                fetchPrices();
+                savePortfolio();
+                fetchPrices(); // This will trigger renderPortfolio, which enables dnd
+                hideNewAssetForm();
             }
             
-            // *** CHANGED: Cleaned up duplicate function ***
-            function handleRemoveAsset(assetId) {
-                // Using a simple confirm. A custom modal would be better for UX.
-                if (confirm(LANGUAGES[currentLang].remove_asset_confirm)) {
+            function handleRemoveLot(assetId, lotId) {
+                if (confirm(LANGUAGES[currentLang].confirm_remove_lot)) {
+                    const asset = portfolio.find(a => a.id === assetId);
+                    if (asset) {
+                        asset.lots = asset.lots.filter(lot => lot.id !== lotId);
+                        
+                        if (asset.lots.length === 0) {
+                            if (confirm(LANGUAGES[currentLang].confirm_remove_asset)) {
+                                handleRemoveAsset(assetId, true); // Pass skipConfirm flag
+                            } else {
+                                savePortfolio();
+                                renderPortfolio();
+                            }
+                        } else {
+                            savePortfolio();
+                            renderPortfolio();
+                        }
+                    }
+                }
+            }
+            
+            function handleRemoveAsset(assetId, skipConfirm = false) {
+                const doRemove = () => {
                     const assetToRemove = portfolio.find(a => a.id === assetId);
                     if (assetToRemove) {
                          delete currentPrices[assetToRemove.symbol];
                     }
-                    
                     portfolio = portfolio.filter(asset => asset.id !== assetId);
-                    
+                    openAccordionItems.delete(assetId);
                     savePortfolio();
                     renderPortfolio();
+                };
+
+                if (skipConfirm) {
+                    doRemove();
+                } else if (confirm(LANGUAGES[currentLang].confirm_remove_asset)) {
+                    doRemove();
                 }
             }
 
@@ -950,113 +1440,219 @@
                     openForm.remove();
                 }
                 
+                const collapseEl = document.getElementById(`collapse-${assetId}`);
+                if (collapseEl) {
+                    const bsCollapse = bootstrap.Collapse.getOrCreateInstance(collapseEl);
+                    bsCollapse.show();
+                }
+                
                 const container = portfolioListEl.querySelector(`[data-container="add-lot-form"][data-asset-id="${assetId}"]`);
                 if (!container) return;
                 
                 const formClone = addLotFormTemplate.content.cloneNode(true);
                 container.appendChild(formClone);
-                applyLang(currentLang); // Translate new form
-                
-                // Focus the first input in the new form
-                container.querySelector('[data-input="units"]').focus();
+                applyLang(currentLang);
+                setSortableState(false); // Disable dnd
             }
             
             function hideAddLotForm(formEl) {
                 if (formEl) {
                     formEl.remove();
                 }
+                setSortableState(true); // Enable dnd
             }
             
             function handleSaveLot(formEl) {
-                if (!formEl) return;
-                
-                const container = formEl.closest('[data-container="add-lot-form"]');
-                const assetId = container.dataset.assetId;
-                
                 const unitsInput = formEl.querySelector('[data-input="units"]');
                 const costInput = formEl.querySelector('[data-input="cost"]');
+                const commissionInput = formEl.querySelector('[data-input="commission"]');
+                const assetId = formEl.closest('.accordion-body').querySelector('[data-container="add-lot-form"]').dataset.assetId;
                 
                 const units = parseFloat(unitsInput.value);
                 const cost = parseFloat(costInput.value);
-
-                if (isNaN(units) || isNaN(cost) || units <= 0 || cost < 0) {
-                     alert('Please fill in all fields with valid data. Units must be > 0 and cost must be >= 0.');
+                const commission = parseFloat(commissionInput.value) || 0;
+                
+                if (isNaN(units) || isNaN(cost) || units <= 0 || cost < 0 || commission < 0) {
+                    alert(LANGUAGES[currentLang].invalid_input);
                     return;
                 }
                 
                 const asset = portfolio.find(a => a.id === assetId);
                 if (!asset) return;
-                
+
                 const newLot = {
                     id: crypto.randomUUID(),
                     assetId: asset.id,
                     units: units,
-                    cost: cost
+                    cost: cost,
+                    commission: commission
                 };
                 
                 asset.lots.push(newLot);
                 savePortfolio();
-                renderPortfolio();
-                // Note: The renderPortfolio call will close the add lot form.
-                // To keep it open, we would need to re-render just the table,
-                // but re-rendering all is simpler and fine for this app.
+                renderPortfolio(); // This will re-enable dnd
             }
             
-            function handleRemoveLot(assetId, lotId) {
-                 if (confirm(LANGUAGES[currentLang].remove_lot_confirm)) {
-                    const asset = portfolio.find(a => a.id === assetId);
-                    if (!asset) return;
-                    
-                    asset.lots = asset.lots.filter(lot => lot.id !== lotId);
-                    
-                    // Check if this was the last lot
-                    if (asset.lots.length === 0) {
-                        // If last lot is removed, remove the whole asset
-                        handleRemoveAsset(asset.id);
-                    } else {
-                        savePortfolio();
-                        renderPortfolio();
+            // --- EDIT LOT HANDLERS ---
+            
+            function handleEditLot(lotId) {
+                editingLotId = lotId;
+                renderPortfolio(); // Re-render to show the edit row
+                setSortableState(false); // Disable dnd
+            }
+            
+            function handleCancelEditLot() {
+                editingLotId = null;
+                renderPortfolio(); // Re-render to cancel
+                // Dnd will be re-enabled by renderPortfolio
+            }
+            
+            function handleSaveEditLot(rowEl) {
+                const assetId = rowEl.dataset.assetId;
+                const lotId = rowEl.dataset.lotId;
+                
+                const units = parseFloat(rowEl.querySelector('[data-edit="units"]').value);
+                const cost = parseFloat(rowEl.querySelector('[data-edit="cost"]').value);
+                const commission = parseFloat(rowEl.querySelector('[data-edit="commission"]').value) || 0;
+                
+                if (isNaN(units) || isNaN(cost) || units < 0 || cost < 0 || commission < 0) { // Allow 0 units
+                    alert(LANGUAGES[currentLang].invalid_input);
+                    return;
+                }
+                
+                const asset = portfolio.find(a => a.id === assetId);
+                if (asset) {
+                    const lot = asset.lots.find(l => l.id === lotId);
+                    if (lot) {
+                        lot.units = units;
+                        lot.cost = cost;
+                        lot.commission = commission;
                     }
                 }
+                
+                editingLotId = null; // Exit edit mode
+                savePortfolio();
+                renderPortfolio();
+                // Dnd will be re-enabled by renderPortfolio
+            }
+            
+            // --- IMPORT / EXPORT HANDLERS ---
+            
+            function handleExport() {
+                const backupData = {};
+                ALL_STORAGE_KEYS.forEach(key => {
+                    const data = localStorage.getItem(key);
+                    if (data) {
+                        backupData[key] = data;
+                    }
+                });
+                
+                const dataStr = JSON.stringify(backupData, null, 2);
+                const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                const _URL = (window.URL || window.webkitURL);
+                const url = _URL.createObjectURL(dataBlob);
+                
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `portfolio_backup_${new Date().toISOString().split('T')[0]}.json`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                _URL.revokeObjectURL(url);
+            }
+            
+            function handleImport(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                if (!confirm(LANGUAGES[currentLang].import_confirm)) {
+                    event.target.value = null;
+                    return;
+                }
+                
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const backupData = JSON.parse(e.target.result);
+                        
+                        let hasValidKey = false;
+                        for (const key of ALL_STORAGE_KEYS) {
+                            if (backupData.hasOwnProperty(key)) {
+                                hasValidKey = true;
+                                break;
+                            }
+                        }
+                        
+                        if (!hasValidKey) {
+                            throw new Error('Invalid file content.');
+                        }
+                        
+                        ALL_STORAGE_KEYS.forEach(key => {
+                            localStorage.removeItem(key);
+                        });
+                        
+                        for (const key in backupData) {
+                            if (ALL_STORAGE_KEYS.includes(key)) {
+                                localStorage.setItem(key, backupData[key]);
+                            }
+                        }
+                        
+                        alert(LANGUAGES[currentLang].import_success);
+                        location.reload();
+                        
+                    } catch (err) {
+                        console.error('Import failed:', err);
+                        alert(`${LANGUAGES[currentLang].import_error_title}: ${LANGUAGES[currentLang].import_error_invalid_file}`);
+                    } finally {
+                        event.target.value = null;
+                    }
+                };
+                reader.readAsText(file);
             }
 
 
             // --- UTILITY FUNCTIONS ---
-            
-            // *** CHANGED: Accept currencyCode, add error handling ***
-            function formatCurrency(value, currencyCode = 'USD') {
-                if (!currencyCode) {
-                    currencyCode = 'USD'; // Default fallback
+            function formatCurrency(value, currency = 'USD') {
+                if (typeof value !== 'number') {
+                    value = 0;
                 }
                 
+                let langCode = (currentLang === 'pl' ? 'pl-PL' : 'en-US');
                 try {
-                    return value.toLocaleString(currentLang === 'pl' ? 'pl-PL' : 'en-US', { 
+                    value.toLocaleString(langCode);
+                } catch (e) {
+                    langCode = 'en-US';
+                }
+
+                try {
+                    return value.toLocaleString(langCode, { 
                         style: 'currency', 
-                        currency: currencyCode,
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2
+                        currency: currency,
+                        maximumFractionDigits: 2,
+                        minimumFractionDigits: 2 
                     });
                 } catch (e) {
-                    // Handle invalid currency code, e.g., from old stored data
-                    // console.warn(`Invalid currency code "${currencyCode}", falling back to USD.`);
-                    return value.toLocaleString(currentLang === 'pl' ? 'pl-PL' : 'en-US', { 
+                    return value.toLocaleString(langCode, { 
                         style: 'currency', 
-                        currency: 'USD', // Fallback to USD
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2
+                        currency: 'USD',
+                        maximumFractionDigits: 2,
+                        minimumFractionDigits: 2 
                     });
                 }
             }
             
             function formatPercent(value) {
+                if (typeof value !== 'number') {
+                    value = 0;
+                }
                 return value.toFixed(2) + '%';
             }
             
             function getPnLInfo(value) {
-                if (value > 0.001) { // Use small tolerance for floating point
+                if (value > 0) {
                     return { textClass: 'pl-profit', icon: 'bi-arrow-up' };
                 }
-                if (value < -0.001) { // Use small tolerance for floating point
+                if (value < 0) {
                     return { textClass: 'pl-loss', icon: 'bi-arrow-down' };
                 }
                 return { textClass: 'text-muted', icon: '' };
@@ -1068,6 +1664,4 @@
     </script>
 </body>
 </html>
-
-
 
